@@ -1,26 +1,112 @@
-# Candidate kit
+\# HROne Employee Attendance \& Analytics API
 
-Read in this order:
 
-1. `PROBLEM_STATEMENT.docx`: what you are asked to do, how it is evaluated.
-2. `openapi.yaml`: the API contract and the business rules (R1 - R10).
-3. `DATA_MODEL.md`: what is stored in MongoDB, with nine sample documents.
-4. `app/main.py`: the starter. Put **all** your code in this one file. It must start with `uvicorn app.main:app --port 8000`.
-5. `REVIEW.md`, `DECISIONS.md`: templates to fill in.
 
-`sample_data/` holds the nine sample documents as MongoDB Extended JSON; `sample_seed.py` loads them. The grader's dataset is
-much larger and contains cases they do not show.
+A REST API built with \*\*FastAPI\*\* and \*\*MongoDB\*\* for employee management, attendance tracking, attendance regularization, and workforce analytics.
 
-## Local setup
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env            # set MONGO_URI / MONGO_DB (local docker: docker run -p 27017:27017 mongo:7)
-python sample_seed.py
-uvicorn app.main:app --port 8000 --reload
-```
-MongoDB **6.0 or newer** is required (the grader uses 7.0). MongoDB Atlas free tier (M0) works.
 
-## Submit
-A public Git repository with `app/main.py`, `requirements.txt`, `REVIEW.md`, `DECISIONS.md` and a short `README.md`.
-No `.env`, no secrets, no Dockerfile.
+
+\## Features
+
+
+
+\- Employee creation and listing
+
+\- Attendance punch-in and punch-out
+
+\- Attendance records with pagination
+
+\- Attendance regularization with audit history
+
+\- Monthly employee attendance analytics
+
+\- Department attendance summaries
+
+\- Late-arrival leaderboard
+
+\- Daily department attendance trends
+
+\- Database indexes and query execution statistics
+
+
+
+\## Tech Stack
+
+
+
+\- Python
+
+\- FastAPI
+
+\- MongoDB
+
+\- PyMongo
+
+\- Pydantic
+
+
+
+\## Setup
+
+
+
+1\. Install Python 3.12 or a compatible version and MongoDB 6.0 or newer.
+
+2\. Install dependencies:
+
+
+
+&#x20;  ```bash
+
+&#x20;  pip install -r requirements.txt
+
+&#x20;  ```
+
+
+
+3\. Configure `MONGO\_URI` and `MONGO\_DB` in a local `.env` file. Do not commit this file or share database credentials.
+
+4\. Start the API:
+
+
+
+&#x20;  ```bash
+
+&#x20;  python -m uvicorn app.main:app --reload
+
+&#x20;  ```
+
+
+
+5\. Open the interactive API documentation at `http://127.0.0.1:8000/docs`.
+
+
+
+\## Project Structure
+
+
+
+\- `app/main.py` — API implementation
+
+\- `requirements.txt` — Python dependencies
+
+\- `DATA\_MODEL.md` — Database model documentation
+
+\- `openapi.yaml` — API contract
+
+\- `REVIEW.md` — Assessment review notes
+
+\- `DECISIONS.md` — Design decisions
+
+\- `sample\_data/` — Sample dataset
+
+\- `sample\_seed.py` — Sample data loader
+
+
+
+\## Assessment
+
+
+
+Developed as part of the HROne Software Engineer hiring assessment for an Employee Attendance \& Analytics API.
+
