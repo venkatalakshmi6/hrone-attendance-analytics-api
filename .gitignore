@@ -20,4 +20,6 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db
+Thumbs.dbapp/main.py.backup
+
+app/main.py.backup
