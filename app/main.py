@@ -220,7 +220,7 @@ def create_employee(body: EmployeeIn):
             detail="emp_code already exists",
         )
 
-    
+
     doc.pop("_id", None)
 
     if doc.get("created_at") is not None:
@@ -314,9 +314,7 @@ def punch_in(body: PunchInIn):
 
     # Truncate to whole seconds
     ts = ts.replace(microsecond=0)
-    # Temporary debugging
-    print("Punch-in IST:", ts)
-    print("Current IST:", datetime.now(IST))
+
     # Determine the attendance date in IST
     attendance_date = ts.date()
 
@@ -325,8 +323,14 @@ def punch_in(body: PunchInIn):
     shift_start = emp["shift_start"]
     shift_end = emp["shift_end"]
 
-    
+    if (
+        shift_end <= shift_start
+        and ts.strftime("%H:%M") < shift_end
+    ):
+        attendance_date -= timedelta(days=1)
+
     date_str = attendance_date.isoformat()
+
 
     doc = {
         "emp_code": body.emp_code,
@@ -546,7 +550,7 @@ def regularize_attendance(
             status_code=404,
             detail="Attendance record not found",
         )
-    
+
     # Step 4: Validate the requested status.
     allowed_statuses = {
         "PRESENT",
@@ -574,7 +578,7 @@ def regularize_attendance(
                         status_code=422,
                         detail=f"{field} must be valid epoch milliseconds",
                     )
-    
+
     # Step 6: Prepare the final values.
     final_status = (
         body.status
@@ -593,7 +597,7 @@ def regularize_attendance(
         if "punch_out" in body.model_fields_set
         else record.get("punch_out")
     )
-    
+
     # Step 7: Handle ABSENT and LEAVE statuses.
     if final_status in {"ABSENT", "LEAVE"}:
         if (
@@ -614,7 +618,7 @@ def regularize_attendance(
             status_code=422,
             detail="Presence status requires punch_in",
         )
-    
+
     # Step 9: Convert epoch milliseconds into IST datetimes.
     def to_ist_datetime(value):
         if value is None:
@@ -634,7 +638,7 @@ def regularize_attendance(
 
     final_punch_in_dt = to_ist_datetime(final_punch_in)
     final_punch_out_dt = to_ist_datetime(final_punch_out)
-    
+
     # Step 10: Validate punch-in date.
     if final_punch_in_dt is not None:
         if final_punch_in_dt.date() != attendance_date:
@@ -660,7 +664,7 @@ def regularize_attendance(
                 status_code=422,
                 detail="Punch-out must be after punch-in and within 24 hours",
             )
-    
+
     # Step 12: Calculate the derived attendance fields.
     if final_status in {"ABSENT", "LEAVE"}:
         final_late_minutes = 0
@@ -694,7 +698,7 @@ def regularize_attendance(
             final_work_hours = None
             final_overtime_minutes = 0
             final_half_day = False
-    
+
     # Step 13: Prepare the values that may change.
     def stored_datetime(value):
         if value is None:
@@ -724,7 +728,7 @@ def regularize_attendance(
         "overtime_minutes": final_overtime_minutes,
         "half_day": final_half_day,
     }
-    
+
     # Step 14: Find the fields that actually changed.
     print("DEBUG old status:", old_values["status"])
     print("DEBUG new status:", new_values["status"])
@@ -757,7 +761,7 @@ def regularize_attendance(
             }
 
     # A request that changes nothing must be rejected.
-    
+
     if not changes:
         raise HTTPException(
             status_code=422,
@@ -771,7 +775,7 @@ def regularize_attendance(
             },
         )
 
-    
+
     # Step 15: Create the history entry.
     history_entry = {
         "at": datetime.now(timezone.utc).replace(microsecond=0),
@@ -780,7 +784,7 @@ def regularize_attendance(
         "changes": changes,
     }
 
-    
+
     # Step 16: Prepare the MongoDB update.
     update_filter = {
         "_id": record["_id"],
@@ -791,7 +795,7 @@ def regularize_attendance(
         update_filter["history"] = record["history"]
     else:
         update_filter["history"] = {"$exists": False}
-    
+
     # Step 17: Prepare the attendance fields to save.
     update_fields = {
         "status": new_values["status"],
@@ -802,7 +806,7 @@ def regularize_attendance(
         "overtime_minutes": new_values["overtime_minutes"],
         "half_day": new_values["half_day"],
     }
-    
+
     # Step 18: Save attendance fields and history together.
     result = db.attendance_logs.update_one(
         update_filter,
@@ -811,14 +815,14 @@ def regularize_attendance(
             "$push": {"history": history_entry},
         },
     )
-    
+
     # Step 19: Check whether the update succeeded.
     if result.modified_count != 1:
         raise HTTPException(
             status_code=409,
             detail="Attendance record changed concurrently; please retry",
         )
-    
+
     # Step 20: Fetch the updated attendance record.
     updated = db.attendance_logs.find_one(
         {"_id": record["_id"]},
@@ -830,7 +834,7 @@ def regularize_attendance(
             status_code=404,
             detail="Attendance record not found",
         )
-    
+
     # Step 21: Convert punch timestamps to epoch milliseconds.
     for field in ("punch_in", "punch_out"):
         value = updated.get(field)
@@ -840,7 +844,7 @@ def regularize_attendance(
                 value = value.replace(tzinfo=timezone.utc)
 
             updated[field] = int(value.timestamp() * 1000)
-    
+
     # Step 22: Convert history timestamps to epoch milliseconds.
     for entry in updated.get("history", []):
         value = entry.get("at")
@@ -852,7 +856,7 @@ def regularize_attendance(
             entry["at"] = int(value.timestamp() * 1000)
         # Step 23: Return the updated attendance record.
     return updated
-    
+
 
 
 @app.get("/attendance")
@@ -996,7 +1000,7 @@ def list_attendance(
         "page": page,
         "page_size": page_size,
     }
-    
+
 @app.get("/analytics/employees/{emp_code}/monthly")
 def employee_monthly(
     emp_code: str,
@@ -1025,7 +1029,7 @@ def employee_monthly(
         calendar.monthrange(year, month_number)[1],
     )
 
-    
+
     # 3. Calculate working days using MongoDB aggregation.
     working_days_pipeline = [
         {
@@ -1268,7 +1272,7 @@ def employee_monthly(
         ),
         "attendance_pct": attendance_pct,
     }
-    
+
 @app.get("/analytics/departments/summary")
 def department_summary(
     month: str = Query(
@@ -1563,7 +1567,7 @@ def department_summary(
         "month": month,
         "items": items,
     }
-    
+
 @app.get("/analytics/leaderboard/late")
 def late_leaderboard(
     month: str = Query(
@@ -1686,7 +1690,7 @@ def late_leaderboard(
         "month": month,
         "items": ranked_items,
     }
-    
+
 @app.get("/analytics/departments/{department}/trend")
 def department_trend(
     department: str,
@@ -1725,7 +1729,7 @@ def department_trend(
 
     # One row per attendance date, with employee counts and
     # employee join dates calculated by MongoDB.
-    
+
     pipeline = [
         {
             "$match": {
@@ -1982,7 +1986,7 @@ def department_trend(
         },
         {"$sort": {"date": 1}},
     ]
-    
+
 
     items = list(db.employees.aggregate(pipeline))
 
@@ -1990,7 +1994,7 @@ def department_trend(
         "department": department,
         "items": items,
     }
-    
+
 @app.get("/admin/explain/{endpoint}")
 def admin_explain(
     endpoint: str,
@@ -2238,7 +2242,7 @@ def admin_explain(
                         "department": "$department",
                         "emp_code": "$emp_code",
                     },
-                   
+
                     "present_days": {
                         "$sum": {
                             "$cond": [
@@ -2525,12 +2529,19 @@ def admin_explain(
             ),
         )
 
-    
-    
+
+
     return Response(
     content=dumps({
         "endpoint": endpoint,
-        "explanation": explanation,
+        "collection": {
+            "attendance_list": "attendance_logs",
+            "employee_monthly": "attendance_logs",
+            "department_summary": "employees",
+            "late_leaderboard": "attendance_logs",
+            "department_trend": "employees",
+        }[endpoint],
+        "explain": explanation,
     }),
     media_type="application/json",
 )
