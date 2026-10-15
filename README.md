@@ -44,12 +44,9 @@ A REST API built with **FastAPI** and **MongoDB** for employee management, atten
 
 - `app/main.py` — API implementation
 - `requirements.txt` — Python dependencies
-- `DATA_MODEL.md` — Database model documentation
-- `openapi.yaml` — API contract
 - `REVIEW.md` — Assessment review notes
 - `DECISIONS.md` — Design decisions
-- `sample_data/` — Sample dataset
-- `sample_seed.py` — Sample data loader
+  
 
 ## Assessment
 
