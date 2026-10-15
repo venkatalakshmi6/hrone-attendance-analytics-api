@@ -729,9 +729,8 @@ def regularize_attendance(
         "half_day": final_half_day,
     }
 
+   
     # Step 14: Find the fields that actually changed.
-    print("DEBUG old status:", old_values["status"])
-    print("DEBUG new status:", new_values["status"])
     changes = {}
 
     for field in new_values:
@@ -760,20 +759,13 @@ def regularize_attendance(
                 "to": new_history_value,
             }
 
-    # A request that changes nothing must be rejected.
-
+    # Reject requests that do not change any attendance fields.
     if not changes:
         raise HTTPException(
             status_code=422,
-            detail={
-                "message": "The request does not change any attendance fields",
-                "body_fields_set": list(body.model_fields_set),
-                "body_status": body.status,
-                "old_status": old_values["status"],
-                "new_status": new_values["status"],
-                "changes": changes,
-            },
+            detail="The request does not change any attendance fields",
         )
+
 
 
     # Step 15: Create the history entry.

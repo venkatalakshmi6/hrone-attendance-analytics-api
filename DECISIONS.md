@@ -1,16 +1,21 @@
 # DECISIONS.md
 
 ## 1. Indexes
-I created a unique index on `employees.emp_code` to prevent duplicate employee codes, and an index on `employees.joined_on` to support department analytics. A unique compound index on `attendance_logs.emp_code` and `date` prevents duplicate attendance records for the same employee and date. The compound index on `date` descending and `emp_code` supports attendance listing by date. I would consider a department index if department-filtered queries became a bottleneck, after checking execution statistics.
 
-## 2. Punch-in race
-Two identical requests may both check the employee, but the unique attendance index allows only one insert for that employee and date. The other insert raises `DuplicateKeyError`, which the API converts to HTTP 409 Conflict.
+Indexes improve query speed. I use a unique index on employee code, a compound index on attendance employee code and date, a date and employee-code index for analytics, and an index on employee joining date. These indexes support lookups, filtering, sorting, and reporting. They should be created automatically at application startup.
+
+## 2. Simultaneous punch-ins
+
+A unique compound index on employee code and attendance date prevents duplicate attendance records. When two identical punch-in requests arrive simultaneously, one should succeed with HTTP 201 and the other should return HTTP 409 Conflict.
 
 ## 3. Leaderboard ties
-Employees with equal total late minutes share the same standard competition rank. The limit is applied after ranking, so employees tied at the cutoff are included. Employee code provides deterministic ordering.
 
-## 4. Department headcount
-The summary starts from employees and uses `$lookup` with `preserveNullAndEmptyArrays` during `$unwind`. Therefore, employees without attendance logs remain in the aggregation and count toward headcount.
+Employees with equal total late minutes share the same rank. For example, ranks can be 1, 2, 2, 4. Tied employees are ordered by employee code, and the requested limit is applied after ranking.
 
-## 5. Scaling
-For 100 times more data, I would benchmark realistic workloads, inspect query plans, and add or adjust indexes based on evidence. I would also test concurrent requests and monitor aggregation latency and database resource usage.
+## 4. Employees without attendance logs
+
+Department headcount includes employees who joined on or before the reporting period's end date, even if they have no attendance records. Employees who joined after that date are excluded.
+
+## 5. Scaling to 100× data
+
+I would measure query performance, review execution plans, optimize indexes and aggregation pipelines, and benchmark with larger datasets. If needed, I would add caching or precomputed analytics while keeping the original attendance records as the source of truth.

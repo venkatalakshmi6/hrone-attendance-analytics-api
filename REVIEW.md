@@ -2,28 +2,30 @@
 
 ## Starter Code Review — `app/main.py`
 
-The following confirmed defect was identified and fixed during implementation and testing.
+The following confirmed issues were addressed and tested during implementation.
 
-| # | Where (function) | What was wrong | How to reproduce | How it was fixed |
+| # | Location | Issue | Reproduction / observed behavior | Fix and verification |
 |---|---|---|---|---|
-| 1 | `punch_in` endpoint | For an overnight shift, an early-morning punch-in could be assigned to the current calendar date instead of the date on which the shift started. | Configure a shift from 22:00 to 06:00 and test a punch-in at 02:00 on 2026-10-15. The expected attendance date is 2026-10-14. | Adjusted the attendance date back by one day when the shift crosses midnight and the punch-in occurs before the shift end. The date calculation was verified with a focused test. |
+| 1 | `punch_in` endpoint | Overnight shifts require the attendance date to reflect the day the shift started. | For a 22:00–06:00 shift, a punch-in at 02:00 belongs to the previous attendance date. | Corrected the overnight date calculation and verified the date handling. |
+| 2 | `regularize_attendance` endpoint | The unchanged-field validation response exposed unnecessary debugging information. | Send a PATCH request with the same status already stored. | Removed debug output and simplified the HTTP 422 response. Verified that unchanged requests return 422 and valid status changes return 200. |
 
-## Items Reviewed and Not Considered Defects
+## Additional Items Reviewed
 
-1. **Duplicate requests:** Duplicate employee creation and duplicate attendance requests returned HTTP 409 in the cases tested. These responses were expected conflict handling.
-2. **Regularization validation:** Invalid status and unchanged-field requests returned HTTP 422 in the cases tested. These responses were expected validation behavior.
-3. **Missing attendance record:** Regularization of a nonexistent attendance record returned HTTP 404 in the case tested. This was expected behavior.
-4. **Attendance-list query performance:** The tested execution plan used an index scan rather than a collection scan.
-5. **Analytics and edge cases:** Additional cases require comparison with the assignment specification and targeted verification before they can be classified as defects or confirmed correct.
+1. **Duplicate requests:** Duplicate employee creation and duplicate attendance requests returned HTTP 409 in the cases tested.
+2. **Regularization validation:** Invalid status and unchanged-field requests returned HTTP 422 in the cases tested.
+3. **Missing attendance record:** Regularizing a nonexistent attendance record returned HTTP 404 in the case tested.
+4. **Attendance-list query:** The tested execution plan used an index scan rather than a collection scan.
+5. **Analytics endpoints:** Attendance listing, employee monthly analytics, department summary, late leaderboard, and department trend returned successful responses in the manual tests performed.
+6. **MongoDB explain endpoints:** All five supported explain endpoints returned successful responses with the required parameters. The inspected plans used indexes in the cases checked. The department-trend explain pipeline still requires verification against the complete trend aggregation.
 
 ## Validation Performed
 
-The FastAPI application was started successfully, and the Swagger UI was accessible. Manual API tests returned successful responses for the health check, attendance listing, employee monthly analytics, department summary, late leaderboard, and department trend. Validation and conflict responses were also checked.
+- Started the FastAPI application and accessed Swagger UI.
+- Tested the health check, attendance listing, employee monthly analytics, department summary, late leaderboard, and department trend.
+- Tested regularization for an unchanged status and for successful status changes.
+- Checked MongoDB explain output for the supported analytics and attendance queries.
+- Ran `python -m py_compile app\main.py` successfully.
 
-MongoDB execution plans were inspected for the attendance-list, employee-monthly, department-summary, late-leaderboard, and department-trend explain operations. The tested plans returned successfully, and the inspected queries used indexes rather than collection scans in the cases checked.
+## Limitations
 
-The application passed Python syntax compilation using:
-
-`python -m py_compile app\main.py`
-
-This review records the confirmed defect and the validation performed. It does not claim that every possible defect or edge case has been identified or tested.
+This review records the issues addressed and the tests actually performed. It does not claim that every possible defect has been identified or that all edge cases and concurrency scenarios have been tested. Further review is needed to establish full coverage of the assessment requirements.
